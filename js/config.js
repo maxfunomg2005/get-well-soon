@@ -8,7 +8,9 @@ const CONFIG = {
   // Фото (необязательно): положи файлы в папку assets рядом с index.html.
   // Если файлов нет — нарисуются мультяшные лица.
   herPhoto: "assets/maria.jpg",
-  myPhoto: "assets/ruslan.jpg",
+  // Square crop around the face, as fractions of the photo width/height: x, y = top-left, size = side / width
+  herPhotoCrop: { x: 0.396, y: 0.244, size: 0.40 },
+  myPhoto: null,                // his character stays drawn
   colors: {
     herHair: "#4a2c1d", herDress: "#ff6fae",
     myHair: "#2a1b12",  myShirt: "#5b8def",

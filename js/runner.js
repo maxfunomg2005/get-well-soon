@@ -136,7 +136,8 @@ function spawnVirus(L) {
   const x = W + 40;
   const fly = Math.random() < L.fly;
   if (fly) {
-    viruses.push({ x, baseY: GROUND - rand(92, 100), y: GROUND - 96, r: 16, fly: true, ph: rand(0, 6), c: '#b48ef0', c2: '#8a63d2' });
+    const fy = herPhoto.img ? rand(116, 122) : rand(92, 100);
+    viruses.push({ x, baseY: GROUND - fy, y: GROUND - fy, r: 16, fly: true, ph: rand(0, 6), c: '#b48ef0', c2: '#8a63d2' });
   } else {
     const r = rand(15, 21);
     viruses.push({ x, y: GROUND - r, r, fly: false, ph: rand(0, 6), c: '#8bd66f', c2: '#5fae4a' });
@@ -506,15 +507,18 @@ function drawPickup(p) {
     }
   }
 }
-function drawFace(photoObj, r, girl) {
+function drawFace(photoObj, r, girl, cy) {
   const c = CONFIG.colors;
   if (!photoObj.img) return false;
-  const im = photoObj.img, s = Math.min(im.width, im.height);
-  ctx.save(); ctx.beginPath(); circ(0, -50, r); ctx.clip();
-  ctx.drawImage(im, (im.width - s) / 2, (im.height - s) / 2 * 0.6, s, s, -r, -50 - r, r * 2, r * 2);
+  const im = photoObj.img, cr = girl && CONFIG.herPhotoCrop;
+  let sx, sy, s;
+  if (cr) { s = cr.size * im.width; sx = cr.x * im.width; sy = cr.y * im.height; }
+  else { s = Math.min(im.width, im.height); sx = (im.width - s) / 2; sy = (im.height - s) / 2 * 0.6; }
+  ctx.save(); ctx.beginPath(); circ(0, cy, r); ctx.clip();
+  ctx.drawImage(im, sx, sy, s, s, -r, cy - r, r * 2, r * 2);
   ctx.restore();
   ctx.strokeStyle = girl ? dressColor() : c.myShirt; ctx.lineWidth = 2.5;
-  ctx.beginPath(); circ(0, -50, r); ctx.stroke();
+  ctx.beginPath(); circ(0, cy, r); ctx.stroke();
   return true;
 }
 function drawHat(id, top) {
@@ -596,8 +600,8 @@ function drawPerson(x, y, o) {
   else if (o.arms === 'wave') { arm(-6, -21); arm(9 + Math.sin(t * 10) * 4, -50); }
   else if (o.arms === 'hug') { arm(14, -31); arm(15, -26); }
   else { const a = o.run != null ? Math.sin(o.run) * 7 : 0; arm(-a, -21); arm(a + 2, -21); }
-  const hr = photo.img ? 15 : 13;
-  if (!drawFace(photo, hr, o.girl)) {
+  const hr = photo.img ? 20 : 13, hcy = photo.img ? -56 : -50;
+  if (!drawFace(photo, hr, o.girl, hcy)) {
     disc(0, -49, 13, sk);
     ctx.fillStyle = o.girl ? c.herHair : c.myHair;
     ctx.beginPath(); ctx.arc(0, -52, 13.5, Math.PI, TAU); ctx.closePath(); ctx.fill();
@@ -612,7 +616,7 @@ function drawPerson(x, y, o) {
     ctx.strokeStyle = '#3a2530'; ctx.lineWidth = 1.6;
     ctx.beginPath(); ctx.arc(6, -45, 3, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
   }
-  if (hat) drawHat(hat, -50 - hr);
+  if (hat) drawHat(hat, hcy - hr - (photo.img ? 5 : 0));
   ctx.restore();
 }
 function nameTag(x, y, s, c) {
@@ -682,7 +686,7 @@ function render() {
       ctx.globalAlpha = ease((fT - 2) / 0.8);
       const close = fin.hx - P.x < 120;
       nameTag(fin.hx + (close ? 32 : 0), top - 78, CONFIG.myName, '#3f6fd8');
-      nameTag(P.x - (close ? 32 : 0), P.y - 78, CONFIG.herName, '#d63d7a');
+      nameTag(P.x - (close ? 32 : 0), P.y - (herPhoto.img ? 112 : 78), CONFIG.herName, '#d63d7a');
       ctx.globalAlpha = 1;
     }
   }
