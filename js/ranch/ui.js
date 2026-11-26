@@ -8,7 +8,7 @@ const Ranch = (() => {
   // when each card turns over during REVEAL (ms): both hands, then board cards 2..5
   const REVEAL_AT = { holes: 300, b1: 1100, b2: 1800, b3: 2500, b4: 3200 };
 
-  let root = null, chip = R.chips[0], off = null, tick = null, sig = {}, lastTick = -1, revealSeen = 0;
+  let root = null, chip = R.chips[0], off = null, tick = null, sig = {}, revealSeen = 0;
 
   const fmt = n => n >= 10000 ? Math.round(n / 1000) + 'K' : n >= 1000 ? (n / 1000).toFixed(n % 1000 ? 1 : 0) + 'K' : String(n);
   function cardHTML(c, hidden, empty) {
@@ -43,7 +43,14 @@ const Ranch = (() => {
         </div>
         <div class="rbanner" id="rBanner"></div>
         <div class="zones" id="rZones"></div>
-        <div class="chips" id="rChips"></div>
+        <div class="rdock">
+          <div class="chips" id="rChips"></div>
+          <div class="ractions">
+            <button class="btn gray" id="rCancel">Отменить</button>
+            <button class="btn" id="rRepeat">Повторить</button>
+            <button class="btn gold" id="rDeal">Раздать 🃏</button>
+          </div>
+        </div>
         <div class="balline"><span>Баланс 🪙 <b class="coinval">${Bank.coins}</b></span><span id="rWin">Выигрыш: 0</span></div>
         <div class="top5"><div class="zlabel">Топ-5 ставок раунда</div><div id="rTop"></div></div>
         <p class="small">Только игровые монеты — настоящие деньги не участвуют.</p>
@@ -52,6 +59,18 @@ const Ranch = (() => {
 
     buildZones();
     buildChips();
+    $('rDeal').addEventListener('click', () => {
+      Sound.wake();
+      const res = X.deal();
+      if (res.why === 'nobet') UI.toast('Сначала поставь на Ковбоя, Быка или другое поле 🪙');
+      else if (res.ok) $('screen').scrollTo({ top: 0, behavior: 'smooth' }); // show the cards being dealt
+    });
+    $('rCancel').addEventListener('click', () => { const n = X.cancelBets(); if (n) { Sound.fx.coin(); UI.toast(`Ставки отменены, +${n} 🪙 вернулись`); } });
+    $('rRepeat').addEventListener('click', () => {
+      Sound.wake();
+      const n = X.repeatBets();
+      if (n) Sound.fx.chips(); else UI.toast('Не хватает монет, чтобы повторить ставку 🪙');
+    });
     root.querySelector('.rtools').addEventListener('click', e => {
       const b = e.target.closest('button'); if (!b) return;
       Sound.wake();
@@ -100,7 +119,7 @@ const Ranch = (() => {
       const res = X.bet(b.dataset.z, chip);
       if (res.ok) { Sound.fx.chips(); b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump'); }
       else if (res.why === 'coins') UI.toast('Не хватает монет — выбери фишку поменьше 🪙');
-      else if (res.why === 'closed') UI.toast('Ставки закрыты, подожди следующий раунд ⏳');
+      else if (res.why === 'closed') UI.toast('Карты уже раздаются — ставь в следующем раунде ⏳');
     });
   }
   function buildChips() {
@@ -116,15 +135,19 @@ const Ranch = (() => {
     const r = X.round;
     if (!root || !r) return;
     const t = Date.now(), left = Math.max(0, r.ends - t);
-    const dur = R.roundSeconds[r.phase] * 1000, el = dur - left;
+    const dur = (R.roundSeconds[r.phase] || 1) * 1000, el = dur - left;
+    const mine = R.zones.reduce((s, z) => s + r.bets[z.id].me, 0);
 
     $('rId').textContent = `Раунд #${r.id}`;
     $('rJp').textContent = Math.floor(X.state.jackpot).toLocaleString('ru');
-    $('rBar').style.width = (left / dur * 100) + '%';
-    $('rBar').className = 'rbar ' + r.phase + (r.phase === 'betting' && left < 4000 ? ' hurry' : '');
-    $('rPhase').textContent = r.phase === 'betting' ? `Делайте ставки: ${Math.ceil(left / 1000)} с`
+    $('rBar').style.width = r.phase === 'betting' ? '100%' : (left / dur * 100) + '%';
+    $('rBar').className = 'rbar ' + r.phase;
+    $('rPhase').textContent = r.phase === 'betting' ? (mine ? `Твоя ставка: ${mine} 🪙 — жми «Раздать»` : 'Делай ставку — карты раздадутся, когда нажмёшь «Раздать»')
       : r.phase === 'reveal' ? 'Ставки закрыты — раздача…' : `Следующий раунд через ${Math.ceil(left / 1000)} с`;
-    if (r.phase === 'betting' && left < 3500) { const s = Math.ceil(left / 1000); if (s !== lastTick) { lastTick = s; Sound.fx.tick(); } }
+    const betting = r.phase === 'betting';
+    $('rDeal').disabled = !betting || !mine;
+    $('rCancel').disabled = !betting || !mine;
+    $('rRepeat').disabled = !betting || !X.canRepeat;
 
     // cards
     const d = r.dealt;
@@ -150,7 +173,7 @@ const Ranch = (() => {
       banner = res.winner === 'draw' ? `🤝 Ничья! ${E.CAT_NAME_RU[res.winCat]}` : `${res.winner === 'cowboy' ? '🤠 Победил Ковбой' : '🐂 Победил Бык'} · ${E.CAT_NAME_RU[res.winCat]}`;
       if (r.myWin) banner += `<br><b class="wintxt">Ты выиграла ${r.myWin} 🪙${r.jackpotWin ? ` (джекпот +${r.jackpotWin}!)` : ''}</b>`;
       else if (r.players.has('__me')) banner += '<br>В этот раз мимо — следующий раунд твой 🍀';
-    } else if (r.phase === 'betting') banner = 'Кто победит — Ковбой или Бык? Выбери фишку и нажми на поле.';
+    } else if (r.phase === 'betting') banner = mine ? 'Можно добавить ещё или нажать «Раздать» 🃏' : 'Кто победит — Ковбой или Бык? Выбери фишку и нажми на поле.';
     else banner = 'Карты открываются…';
     put('rBanner', banner);
     $('rWin').textContent = `Выигрыш: ${r.result ? r.myWin : 0}`;
@@ -251,11 +274,11 @@ const Ranch = (() => {
     const sh = R.jackpot.share, C = E.CAT;
     const game = `
       <p>Каждый раунд Ковбой 🤠 и Бык 🐂 получают по 2 карты, на стол выкладываются 5 общих карт — как в техасском холдеме. У кого лучшая комбинация из 5 карт (из своих 2 + 5 общих), тот и победил. Одинаковые комбинации — ничья.</p>
-      <p>Раунд: <b>${R.roundSeconds.betting} секунд на ставки</b> (одна общая карта уже открыта) → раздача остальных карт → результат.</p>
+      <p>Раунд: делаешь ставки (одна общая карта уже открыта) и нажимаешь <b>«Раздать»</b> → раздаются остальные карты → результат. Пока карты не розданы, ставки можно <b>отменить</b>; кнопка <b>«Повторить»</b> ставит то же, что в прошлом раунде.</p>
       <p><b>Главные ставки:</b> Ковбой ${z('cowboy')} · Ничья ${z('draw')} · Бык ${z('bull')}. При ничьей ставки на Ковбоя и Быка проигрывают.</p>
       <p><b>Любая рука</b> — смотрим на карманные карты обоих: одной масти или соседние по старшинству (A-K и A-2 тоже) ${z('suitedConn')}, карманная пара ${z('pocketPair')}, карманные тузы ${z('pocketAces')}.</p>
       <p><b>Выигрышная рука</b> — комбинация победителя (при ничьей — общая): старшая карта/пара ${z('wHighPair')}, две пары ${z('wTwoPair')}, сет/стрит/флеш ${z('wTSF')}, фулл-хаус ${z('wFull')}, каре/стрит-флеш/роял ${z('wQuadsPlus')}.</p>
-      <p>Множитель — это сколько вернётся с каждой монеты вместе со ставкой. Ставить можно на несколько полей и много раз, пока идёт таймер.</p>
+      <p>Множитель — это сколько вернётся с каждой монеты вместе со ставкой. Ставить можно на несколько полей и много раз, пока не нажата «Раздать».</p>
       <p>Точки под полем — попадало ли оно в последних 7 раундах.</p>`;
     const jp = `
       <p>${R.jackpot.feePercent}% от каждой ставки всех игроков пополняет джекпот 💰 (из доли казино — твой выигрыш от этого не уменьшается).</p>

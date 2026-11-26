@@ -5,7 +5,7 @@
   const { CAT, rankOf, suitOf, evaluate } = E;
 
   const RANCH = {
-    roundSeconds: { betting: 15, reveal: 4, result: 5 },
+    roundSeconds: { reveal: 4, result: 5 },   // betting waits for her «Раздать»
     chips: [10, 50, 100, 500, 1000],     // scaled to the game's coin economy (spec: 50/500/1K/3K/10K)
     jackpot: {
       feePercent: 1,          // % of every bet that goes into the pool

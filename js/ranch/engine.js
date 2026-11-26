@@ -1,5 +1,5 @@
 /* Ranch Showdown round engine (runs in the browser; play coins only).
-   BETTING (first board card face up) -> REVEAL -> RESULT -> next round.
+   BETTING (first board card face up; waits until she presses «Раздать») -> REVEAL -> RESULT -> next round.
    Each round: seed = 32 random bytes; its SHA-256 is shown before betting; the deal is derived
    from the seed (SHA-256(seed:i) blocks -> uint32 stream -> Fisher-Yates), and the seed is revealed after. */
 const RanchEngine = (() => {
@@ -89,7 +89,7 @@ const RanchEngine = (() => {
     else dealt = E.deal(E.makeRandInt(E.secureU32())); // insecure context (file://): no proof
     if (!running) return; // left the table while the round was being prepared
     cur = {
-      id: S.nextId++, seed, hash, dealt, phase: 'betting', ends: now() + R.roundSeconds.betting * 1000,
+      id: S.nextId++, seed, hash, dealt, phase: 'betting', ends: 0, // betting has no timer: she deals when ready
       bets: Object.fromEntries(ZONES.map(z => [z, { me: 0, total: 0 }])),
       players: new Map(), myWin: 0, result: null, jackpotWin: 0,
     };
@@ -97,7 +97,6 @@ const RanchEngine = (() => {
     scheduleBots();
     emit('round');
     clearTimeout(timer);
-    timer = setTimeout(toReveal, cur.ends - now());
   }
 
   function scheduleBots() {
@@ -107,7 +106,7 @@ const RanchEngine = (() => {
       const bot = (Math.random() * BOTS.length) | 0;
       const bets = 1 + ((Math.random() * 3) | 0);
       for (let j = 0; j < bets; j++) {
-        const at = 800 + Math.random() * (R.roundSeconds.betting * 1000 - 1500);
+        const at = 600 + Math.random() * 6000;
         setTimeout(() => {
           if (cur !== r || r.phase !== 'betting') return;
           const roll = Math.random();
@@ -128,16 +127,46 @@ const RanchEngine = (() => {
     S.jackpot += amt * R.jackpot.feePercent / 100; // fee comes out of the house edge, not the stake
   }
 
-  // Her bet. Spend + record happen together, or not at all. Rejected once the timer has closed.
+  // Her bet. Spend + record happen together, or not at all. Rejected once the cards are being dealt.
   function bet(zone, amt) {
     const r = cur;
-    if (!r || r.phase !== 'betting' || now() >= r.ends) return { ok: false, why: 'closed' };
+    if (!r || r.phase !== 'betting') return { ok: false, why: 'closed' };
     if (!ZONES.includes(zone) || !(amt > 0)) return { ok: false, why: 'bad' };
     if (!Bank.spend(amt)) return { ok: false, why: 'coins' };
     addBet(r, '__me', zone, amt);
     save();
     emit('bets');
     return { ok: true };
+  }
+
+  const myBets = r => (r && r.players.get('__me')) || null;
+
+  // She presses «Раздать»: betting closes and the cards are dealt. Needs at least one bet.
+  function deal() {
+    const r = cur;
+    if (!r || r.phase !== 'betting') return { ok: false, why: 'closed' };
+    if (!myBets(r)) return { ok: false, why: 'nobet' };
+    toReveal();
+    return { ok: true };
+  }
+
+  // Take back all her bets this round (only before dealing).
+  function cancelBets() {
+    const r = cur, p = myBets(r);
+    if (!r || r.phase !== 'betting' || !p) return 0;
+    for (const [z, a] of Object.entries(p.bets)) { r.bets[z].total -= a; r.bets[z].me -= a; }
+    S.jackpot -= p.amount * R.jackpot.feePercent / 100;
+    r.players.delete('__me');
+    Bank.add(p.amount);
+    save(); emit('bets');
+    return p.amount;
+  }
+
+  // Place the same bets as her last round. Returns how much was placed.
+  function repeatBets() {
+    let placed = 0;
+    for (const [z, a] of Object.entries(S.lastBets || {})) if (bet(z, a).ok) placed += a;
+    return placed;
   }
 
   function toReveal() {
@@ -171,6 +200,7 @@ const RanchEngine = (() => {
       p.win = win;
       if (win > 0) S.lb[who] = (S.lb[who] || 0) + win;
       if (who === '__me') {
+        S.lastBets = { ...p.bets };
         r.myWin = win; r.jackpotWin = jpPay.__me || 0;
         if (win > 0) Bank.add(win);
         for (const [z, a] of Object.entries(p.bets)) {
@@ -205,10 +235,11 @@ const RanchEngine = (() => {
   }
 
   function start() { if (running) return; running = true; newRound(); }
-  // Leaving the table: a round she has bet on is finished instantly so no coins are lost.
+  // Leaving the table: bets not yet dealt are returned; a round already being dealt is finished instantly.
   function stop() {
     running = false; clearTimeout(timer);
-    if (cur && cur.phase !== 'result' && cur.players.has('__me')) settle(cur);
+    if (cur && cur.phase === 'betting') cancelBets();
+    else if (cur && cur.phase === 'reveal' && cur.players.has('__me')) settle(cur);
     cur = null;
   }
 
@@ -227,11 +258,12 @@ const RanchEngine = (() => {
   }
 
   return {
-    start, stop, bet, verify, claimReward, leaderboard, myRank, rewardFor, zoneStats, topBettors,
+    start, stop, bet, deal, cancelBets, repeatBets, verify, claimReward, leaderboard, myRank, rewardFor, zoneStats, topBettors,
     on(f) { listeners.push(f); return () => { listeners = listeners.filter(g => g !== f); }; },
     get round() { return cur; },
     get state() { return S; },
     get running() { return running; },
     get provable() { return !!subtle; },
+    get canRepeat() { return !!S.lastBets && Object.keys(S.lastBets).length > 0; },
   };
 })();
