@@ -1,0 +1,10 @@
+{
+  "name": "get-well-soon",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/eval.test.js tests/fish.test.js",
+    "sim": "node sim/montecarlo.js",
+    "sim:slots": "node sim/slots.js",
+    "sim:fish": "node sim/fish.js"
+  }
+}

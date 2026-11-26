@@ -14,14 +14,14 @@ const App = {
 };
 
 (() => {
-  // ?preview=2 / 3 / end / casino / poker / slots / shop  (&ff=seconds fast-forwards the runner)
+  // ?preview=2 / 3 / end / casino / ranch / fish / slots / shop  (&ff=seconds fast-forwards the runner)
   const qs = new URLSearchParams(location.search), pv = qs.get('preview');
   if (pv === 'end') { Runner.startLevel(2); Runner.startFinale(); }
   else if (pv === '2' || pv === '3') { Runner.setHealth(50); Runner.startLevel(+pv - 1); }
   else if (pv === 'casino') Casino.hub();
-  else if (pv === 'poker') Poker.open();
-  else if (pv === 'pokerhand') { Poker.open(); Poker._deal(); }
+  else if (pv === 'poker' || pv === 'ranch') Ranch.open();
   else if (pv === 'slots') Slots.open();
+  else if (pv === 'fish') FishGame.open();
   else if (pv === 'shop') Shop.open();
   else App.menu();
   const ff = Math.min(60, +qs.get('ff') || 0);
