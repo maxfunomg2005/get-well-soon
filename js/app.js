@@ -9,14 +9,17 @@ const App = {
       { label: 'Играть ♥', cb: () => Runner.startNew() },
       { label: 'Казино 🤠', cb: () => Casino.hub(), alt: true },
       { label: 'Магазин 🛍️', cb: () => Shop.open(), alt: true },
+      { label: 'Вдвоём 🎮', cb: () => Duo.open(), alt: true },
     ]);
   },
 };
 
 (() => {
-  // ?preview=2 / 3 / end / casino / ranch / fish / slots / shop  (&ff=seconds fast-forwards the runner)
-  const qs = new URLSearchParams(location.search), pv = qs.get('preview');
-  if (pv === 'end') { Runner.startLevel(2); Runner.startFinale(); }
+  // ?preview=2 / 3 / end / casino / ranch / fish / slots / shop / duo; ?room=CODE opens a two-player room  (&ff=seconds fast-forwards the runner)
+  const qs = new URLSearchParams(location.search), pv = qs.get('preview'), roomCode = qs.get('room');
+  if (roomCode) Duo.open(DuoNet.normCode(roomCode)); // invite link: ?room=CODE
+  else if (pv === 'duo') Duo.open();
+  else if (pv === 'end') { Runner.startLevel(2); Runner.startFinale(); }
   else if (pv === '2' || pv === '3') { Runner.setHealth(50); Runner.startLevel(+pv - 1); }
   else if (pv === 'casino') Casino.hub();
   else if (pv === 'poker' || pv === 'ranch') Ranch.open();

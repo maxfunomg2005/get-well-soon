@@ -401,6 +401,62 @@
   .slinesmap { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; font-size: 11px; text-align: center; }
   .smini { width: 100%; display: block; }
 
+  /* duo: play together */
+  .screen.duo { background: linear-gradient(#1d3b6b, #10264a); color: #eef4ff; }
+  .screen.duo .scrHead { background: rgba(0, 0, 0, .25); }
+  .duobox { width: 100%; max-width: 520px; display: flex; flex-direction: column; gap: 10px; align-items: stretch; }
+  .duobox h2 { text-align: center; margin: 8px 0; }
+  .duobox a { color: #ffd23f; }
+  .duonames { display: flex; gap: 12px; }
+  .screen.duo .tile { background: linear-gradient(#2f5a9e, #1f3f75); border-color: #8fb3ff; box-shadow: 0 6px 0 #0c1d3a; color: #eef4ff; }
+  .duotile { display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: default; }
+  .duotile .btn { margin-top: 8px; }
+  .screen.duo .promo { border-color: #8fb3ff; }
+  .duorecent { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; justify-content: center; }
+  .duowait { text-align: center; font-size: 16px; line-height: 1.5; }
+  .duocode { text-align: center; font-size: 44px; font-weight: 700; letter-spacing: 8px; background: #fff6e0; color: #1d3b6b; border-radius: 16px; padding: 10px; }
+  .duohead { display: flex; align-items: center; gap: 8px; }
+  .duohead .btn { padding: 8px 12px; font-size: 14px; white-space: nowrap; }
+  .duoroom { flex: 1; text-align: center; font-weight: 700; line-height: 1.2; }
+  .duowarn { background: #b33a2c; border-radius: 10px; padding: 6px; text-align: center; font-size: 13px; }
+  .duoplayers { display: flex; justify-content: space-between; font-size: 13px; opacity: .9; }
+  .duoplayers .off { opacity: .6; }
+  .duostatus { background: rgba(0, 0, 0, .25); border-radius: 12px; padding: 8px 12px; text-align: center; font-weight: 700; font-size: 14px; }
+  .duostatus.myturn { background: #2e8b57; box-shadow: 0 0 0 2px #7bd88f; }
+  .duobtns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; min-height: 10px; }
+  .bwrap { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .btitle { font-size: 13px; font-weight: 700; }
+  .bgrid { display: grid; grid-template-columns: 16px repeat(10, 1fr); gap: 2px; width: min(100%, 380px); }
+  .small-board .bgrid { width: min(70%, 260px); }
+  .blab { font-size: 10px; opacity: .7; display: flex; align-items: center; justify-content: center; }
+  .bc { aspect-ratio: 1; background: #3a6fb5; border-radius: 3px; position: relative; }
+  .bc.ship { background: #9aa9bf; box-shadow: inset 0 0 0 2px #d6dfeb; }
+  .bc.aim { cursor: pointer; background: #4a86d4; }
+  .bc.aim:active, .bc.pending { background: #ffd23f; }
+  .bc.miss::after { content: ''; position: absolute; inset: 38%; border-radius: 50%; background: #dbe8ff; }
+  .bc.hit { background: #e0463c; }
+  .bc.hit::after, .bc.sunk::after { content: '✕'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 11px; }
+  .bc.sunk { background: #6b1f1a; }
+  .bc.last { box-shadow: 0 0 0 2px #ffd23f; z-index: 1; }
+  .blast { text-align: center; min-height: 16px; }
+  .duo .pcard { --cw: clamp(38px, 11vw, 56px); width: var(--cw); height: calc(var(--cw) * 1.4); font-size: calc(var(--cw) * .34); }
+  .dopp { text-align: center; font-size: 13px; }
+  .dfan { display: flex; justify-content: center; margin-top: 4px; }
+  .dfan i { width: 22px; height: 32px; margin-left: -10px; border-radius: 4px; border: 2px solid #fff; background: repeating-linear-gradient(45deg, #b33a2c 0 4px, #d9534f 4px 8px); display: block; }
+  .dmid { display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: center; background: rgba(0, 0, 0, .18); border-radius: 14px; padding: 8px; }
+  .ddeck { position: relative; width: 74px; height: 80px; }
+  .dtrump { position: absolute; left: 14px; top: 8px; transform: rotate(90deg); }
+  .dback { position: absolute; left: 0; top: 0; width: 44px; height: 62px; border-radius: 6px; border: 3px solid #fff; box-sizing: border-box; background: repeating-linear-gradient(45deg, #b33a2c 0 6px, #d9534f 6px 12px); display: flex; align-items: center; justify-content: center; font-weight: 700; color: #fff; text-shadow: 0 1px 2px #000; }
+  .dtrumpsuit { font-size: 13px; text-align: center; padding-top: 24px; } .dtrumpsuit.red { color: #ff9a9a; }
+  .dtable { display: flex; flex-wrap: wrap; gap: 10px 14px; min-height: 90px; align-items: center; }
+  .dpair { position: relative; padding: 0 12px 14px 0; cursor: pointer; }
+  .dpair .cover { position: absolute; left: 14px; top: 16px; }
+  .dpair .target { box-shadow: 0 0 0 3px #ffd23f, 0 3px 8px rgba(0, 0, 0, .35); }
+  .dbito { grid-column: 1 / -1; text-align: right; }
+  .dhand { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; padding-top: 6px; }
+  .dhand .pcard { cursor: pointer; transition: transform .1s; }
+  .dhand .pcard.sel { transform: translateY(-10px); box-shadow: 0 0 0 3px #ffd23f; }
+
   /* shop */
   .screen.shop { background: linear-gradient(#ffeef5, #ffd6e7); color: #6b4a5a; }
   .screen.shop .scrHead { background: rgba(255, 255, 255, .7); }
@@ -435,22 +491,26 @@
 <button id="mute" aria-label="Звук">🔊</button>
 <div id="toast"></div>
 
-<script src="js/config.js?v=20261127e"></script>
-<script src="js/bank.js?v=20261127e"></script>
-<script src="js/ui.js?v=20261127e"></script>
-<script src="js/runner.js?v=20261127e"></script>
-<script src="js/ranch/eval.js?v=20261127e"></script>
-<script src="js/ranch/payouts.js?v=20261127e"></script>
-<script src="js/ranch/engine.js?v=20261127e"></script>
-<script src="js/ranch/ui.js?v=20261127e"></script>
-<script src="js/fish/config.js?v=20261127e"></script>
-<script src="js/fish/engine.js?v=20261127e"></script>
-<script src="js/fish/game.js?v=20261127e"></script>
-<script src="js/slots/config.js?v=20261127e"></script>
-<script src="js/slots/engine.js?v=20261127e"></script>
-<script src="js/slots/ui.js?v=20261127e"></script>
-<script src="js/casino.js?v=20261127e"></script>
-<script src="js/shop.js?v=20261127e"></script>
-<script src="js/app.js?v=20261127e"></script>
+<script src="js/config.js?v=20261127f"></script>
+<script src="js/bank.js?v=20261127f"></script>
+<script src="js/ui.js?v=20261127f"></script>
+<script src="js/runner.js?v=20261127f"></script>
+<script src="js/ranch/eval.js?v=20261127f"></script>
+<script src="js/ranch/payouts.js?v=20261127f"></script>
+<script src="js/ranch/engine.js?v=20261127f"></script>
+<script src="js/ranch/ui.js?v=20261127f"></script>
+<script src="js/fish/config.js?v=20261127f"></script>
+<script src="js/fish/engine.js?v=20261127f"></script>
+<script src="js/fish/game.js?v=20261127f"></script>
+<script src="js/slots/config.js?v=20261127f"></script>
+<script src="js/slots/engine.js?v=20261127f"></script>
+<script src="js/slots/ui.js?v=20261127f"></script>
+<script src="js/casino.js?v=20261127f"></script>
+<script src="js/duo/battleship.js?v=20261127f"></script>
+<script src="js/duo/durak.js?v=20261127f"></script>
+<script src="js/duo/net.js?v=20261127f"></script>
+<script src="js/duo/ui.js?v=20261127f"></script>
+<script src="js/shop.js?v=20261127f"></script>
+<script src="js/app.js?v=20261127f"></script>
 </body>
 </html>
