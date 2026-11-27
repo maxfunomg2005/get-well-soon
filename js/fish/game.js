@@ -244,9 +244,8 @@ const FishGame = (() => {
     $('fWins').onclick = winsModal; $('fRules').onclick = rulesModal;
     $('fmClose').onclick = () => $('fModal').classList.remove('show');
     $('fModal').onclick = e => { if (e.target.id === 'fModal') $('fModal').classList.remove('show'); };
-    const gunToast = () => UI.toast(`🔫 Пушка ${gun()}: ловит рыб ${gunRange(gun())}`);
-    $('fMinus').onclick = () => { level = Math.max(0, level - 1); Sound.fx.tick(); gunToast(); };
-    $('fPlus').onclick = () => { level = Math.min(C.shot.levels.length - 1, level + 1); Sound.fx.tick(); gunToast(); };
+    $('fMinus').onclick = () => { level = Math.max(0, level - 1); Sound.fx.tick(); };
+    $('fPlus').onclick = () => { level = Math.min(C.shot.levels.length - 1, level + 1); Sound.fx.tick(); };
     $('fAuto').onclick = () => { auto = !auto; if (!auto) { lock = null; autoTarget = null; } Sound.fx.tick(); updateButtons(); };
     $('fFreeze').onclick = useFreeze;
     if (Bank.coins < C.shot.levels[level]) level = 0;
@@ -288,21 +287,17 @@ const FishGame = (() => {
 
   // ---------- input / firing ----------
   const gun = () => C.shot.levels[level];
+  const TOUCH_PAD = 34; // generous touch area around each fish (world px)
   const fmtM = m => '×' + m.toLocaleString('ru');
   const gunsFor = t => C.shot.levels.filter(g => t.mult >= C.guns[g].min && t.mult <= C.guns[g].max);
   const gunRange = g => { const ts = T.filter(t => t.mult >= C.guns[g].min && t.mult <= C.guns[g].max); return fmtM(ts[0].mult) + ' – ' + fmtM(ts[ts.length - 1].mult); };
   const gunsText = t => { const gs = gunsFor(t); return gs.length > 1 ? gs[0] + '–' + gs[gs.length - 1] : String(gs[0]); };
-  function needBiggerGun(f) {
-    if (eng.time - toastT < 1.2) return;
-    toastT = eng.time;
-    UI.toast(`«${f.t.name}» ловится пушкой ${gunsText(f.t)} — поменяй кнопками − / + 🔫`);
-  }
   // Touching a fish locks onto that fish: bullets follow it and hit only it. Touching water shoots straight there.
   function onDown(e) {
     e.preventDefault(); Sound.wake(); if (music.on && !music.ac) startMusic();
     $('fPanel').classList.remove('show');
-    const p = toWorld(e), f = eng.fishAt(p.x, p.y, 18, gun());
-    if (f && !eng.canHit(f, gun())) { needBiggerGun(f); return; }
+    const p = toWorld(e); let f = eng.fishAt(p.x, p.y, TOUCH_PAD, gun());
+    if (f && !eng.canHit(f, gun())) f = null; // faded fish: treated as water, no message
     if (auto) { lock = f; lockId = f ? f.id : 0; return; } // in auto, tapping picks (or clears) the target
     hold = { x: p.x, y: p.y, fish: f, id: f ? f.id : 0 };
     fireAtHold();
@@ -310,7 +305,7 @@ const FishGame = (() => {
   function onMove(e) {
     if (!hold) return;
     const p = toWorld(e); hold.x = p.x; hold.y = p.y;
-    const f = eng.fishAt(p.x, p.y, 18, gun());
+    const f = eng.fishAt(p.x, p.y, TOUCH_PAD, gun());
     if (f && eng.canHit(f, gun()) && f !== hold.fish) { hold.fish = f; hold.id = f.id; } // slid onto another fish
   }
   const holdFish = () => hold && hold.fish && hold.fish.id === hold.id && eng.alive(hold.fish) && eng.onScreen(hold.fish) && eng.canHit(hold.fish, gun()) ? hold.fish : null;
