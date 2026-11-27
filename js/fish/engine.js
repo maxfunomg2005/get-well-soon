@@ -112,6 +112,7 @@
 
     const onScreen = f => f.x > 0 && f.x < W && f.y > 0 && f.y < H;
     const alive = f => f.active && f.dying === 0 && f.u >= 0;
+    const canHit = (f, cost) => cost >= (f.t.gun || 0); // bigger fish need a bigger gun
 
     // ---------- shots ----------
     // aim at a point; optional lockFish makes the bullet home on that fish (hits nothing else).
@@ -120,6 +121,7 @@
       if (!(cost > 0) || !S.levels.includes(cost)) return 'bad';
       if (time - s.last < S.minInterval - 1e-9 && s.last >= 0) return 'rate';
       if (s.inFlight >= S.maxPerSeat) return 'max';
+      if (lockFish && !canHit(lockFish, cost)) return 'gun';
       let b = null;
       for (let i = 0; i < bullets.length; i++) if (!bullets[i].active) { b = bullets[i]; break; }
       if (!b) return 'max';
@@ -175,7 +177,7 @@
         if (b.target) { if (hitTest(b.target, b.x, b.y, r)) resolveHit(b, b.target); continue; }
         for (let j = 0; j < fish.length; j++) {
           const f = fish[j];
-          if (!alive(f) || !onScreen(f)) continue;
+          if (!alive(f) || !onScreen(f) || !canHit(f, b.cost)) continue; // too small a gun: passes through
           if (hitTest(f, b.x, b.y, r)) { resolveHit(b, f); break; }
         }
       }
@@ -212,20 +214,23 @@
       for (let k = 0; k < n; k++) { stepFish(dt / n); stepBullets(dt / n); }
     }
 
-    // Fish under a point (topmost/biggest first), for tap-to-target.
-    function fishAt(x, y, pad = 12) {
-      let best = null;
+    // Fish under a finger, for tap-to-target. Prefers fish this gun can catch, biggest first;
+    // if none can be caught, returns the one touched so the UI can say which gun it needs.
+    function fishAt(x, y, pad = 18, cost = Infinity) {
+      let best = null, any = null;
       for (let i = 0; i < fish.length; i++) {
         const f = fish[i];
-        if (alive(f) && onScreen(f) && hitTest(f, x, y, pad) && (!best || f.t.len > best.t.len)) best = f;
+        if (!alive(f) || !onScreen(f) || !hitTest(f, x, y, pad)) continue;
+        if (canHit(f, cost) && (!best || f.t.len > best.t.len)) best = f;
+        if (!any || f.t.len > any.t.len) any = f;
       }
-      return best;
+      return best || any;
     }
-    function randomTarget() {
+    function randomTarget(cost = Infinity) {
       let n = 0, pickF = null;
       for (let i = 0; i < fish.length; i++) {
         const f = fish[i];
-        if (alive(f) && f.x > 20 && f.x < W - 20 && f.y > 60 && f.y < H - 60) { n++; if (rnd() * n < 1) pickF = f; }
+        if (alive(f) && canHit(f, cost) && f.x > 20 && f.x < W - 20 && f.y > 60 && f.y < H - 60) { n++; if (rnd() * n < 1) pickF = f; }
       }
       return pickF;
     }
@@ -238,7 +243,7 @@
     function prefill(seconds) { for (let t = 0; t < seconds; t += 1 / 30) step(1 / 30); }
 
     return {
-      step, fire, fishAt, randomTarget, shutdown, prefill, alive, onScreen,
+      step, fire, fishAt, randomTarget, shutdown, prefill, alive, onScreen, canHit,
       freeze(sec) { frozen = Math.max(frozen, sec); },
       fish, bullets, seats, types,
       get time() { return time; }, get frozen() { return frozen; }, get bossIn() { return bossT; },

@@ -207,7 +207,7 @@ const FishGame = (() => {
           <button class="fbtn" id="fRules" aria-label="Правила">?</button>
         </div>
         <div class="fpanel" id="fPanel"><div class="fph">Цена рыб <small>× ставка</small></div>
-          ${T.map((t, i) => `<div class="fpr"><img src="${icons[i]}" alt=""><span>${t.name}</span><b>×${t.mult.toLocaleString('ru')}</b></div>`).join('')}</div>
+          ${T.map((t, i) => `<div class="fpr"><img src="${icons[i]}" alt=""><span>${t.name}<br><small>🔫 от ${t.gun}</small></span><b>×${t.mult.toLocaleString('ru')}</b></div>`).join('')}</div>
         <div class="fbanner" id="fBanner"></div>
         <div class="flabel me" id="fL0" style="left:${labelPos[0].x / W * 100}%;top:${labelPos[0].y / H * 100}%"><span class="fav" id="fAv">👸</span><span><b>${her}</b><br>🪙 <span class="coinval">${Bank.coins}</span></span></div>
         ${[1, 2, 3].map(i => `<div class="flabel" id="fL${i}" style="left:${labelPos[i].x / W * 100}%;top:${labelPos[i].y / H * 100}%"></div>`).join('')}
@@ -235,7 +235,7 @@ const FishGame = (() => {
 
     // input
     cv.addEventListener('pointerdown', onDown);
-    cv.addEventListener('pointermove', e => { if (hold) { const p = toWorld(e); hold.x = p.x; hold.y = p.y; } });
+    cv.addEventListener('pointermove', onMove);
     const up = () => { hold = null; };
     cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up); cv.addEventListener('pointerleave', up);
     $('fClose').onclick = close;
@@ -244,8 +244,9 @@ const FishGame = (() => {
     $('fWins').onclick = winsModal; $('fRules').onclick = rulesModal;
     $('fmClose').onclick = () => $('fModal').classList.remove('show');
     $('fModal').onclick = e => { if (e.target.id === 'fModal') $('fModal').classList.remove('show'); };
-    $('fMinus').onclick = () => { level = Math.max(0, level - 1); Sound.fx.tick(); };
-    $('fPlus').onclick = () => { level = Math.min(C.shot.levels.length - 1, level + 1); Sound.fx.tick(); };
+    const gunToast = () => UI.toast(`🔫 Пушка ${gun()}: ловит рыб до ×${maxMultFor(gun()).toLocaleString('ru')}`);
+    $('fMinus').onclick = () => { level = Math.max(0, level - 1); Sound.fx.tick(); gunToast(); };
+    $('fPlus').onclick = () => { level = Math.min(C.shot.levels.length - 1, level + 1); Sound.fx.tick(); gunToast(); };
     $('fAuto').onclick = () => { auto = !auto; if (!auto) { lock = null; autoTarget = null; } Sound.fx.tick(); updateButtons(); };
     $('fFreeze').onclick = useFreeze;
     if (Bank.coins < C.shot.levels[level]) level = 0;
@@ -286,12 +287,33 @@ const FishGame = (() => {
   function toWorld(e) { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) / r.width * W, y: (e.clientY - r.top) / r.height * H }; }
 
   // ---------- input / firing ----------
+  const gun = () => C.shot.levels[level];
+  const maxMultFor = cost => T.filter(t => cost >= t.gun).reduce((m, t) => Math.max(m, t.mult), 0);
+  function needBiggerGun(f) {
+    if (eng.time - toastT < 1.2) return;
+    toastT = eng.time;
+    UI.toast(`«${f.t.name}» ловится пушкой от ${f.t.gun} — нажми + 🔫`);
+  }
+  // Touching a fish locks onto that fish: bullets follow it and hit only it. Touching water shoots straight there.
   function onDown(e) {
     e.preventDefault(); Sound.wake(); if (music.on && !music.ac) startMusic();
     $('fPanel').classList.remove('show');
-    const p = toWorld(e), f = eng.fishAt(p.x, p.y);
+    const p = toWorld(e), f = eng.fishAt(p.x, p.y, 18, gun());
+    if (f && !eng.canHit(f, gun())) { needBiggerGun(f); return; }
     if (auto) { lock = f; lockId = f ? f.id : 0; return; } // in auto, tapping picks (or clears) the target
-    hold = p; tryFire(p.x, p.y, null);
+    hold = { x: p.x, y: p.y, fish: f, id: f ? f.id : 0 };
+    fireAtHold();
+  }
+  function onMove(e) {
+    if (!hold) return;
+    const p = toWorld(e); hold.x = p.x; hold.y = p.y;
+    const f = eng.fishAt(p.x, p.y, 18, gun());
+    if (f && eng.canHit(f, gun()) && f !== hold.fish) { hold.fish = f; hold.id = f.id; } // slid onto another fish
+  }
+  const holdFish = () => hold && hold.fish && hold.fish.id === hold.id && eng.alive(hold.fish) && eng.onScreen(hold.fish) && eng.canHit(hold.fish, gun()) ? hold.fish : null;
+  function fireAtHold() {
+    const f = holdFish();
+    if (f) tryFire(f.x, f.y, f); else tryFire(hold.x, hold.y, null);
   }
   function tryFire(x, y, lockFish) {
     const cost = C.shot.levels[level];
@@ -304,13 +326,13 @@ const FishGame = (() => {
     }
     return false;
   }
-  const validLock = () => lock && lock.id === lockId && eng.alive(lock) && eng.onScreen(lock);
+  const validLock = () => lock && lock.id === lockId && eng.alive(lock) && eng.onScreen(lock) && eng.canHit(lock, gun());
   function updatePlayer() {
     if (auto) {
-      if (!validLock()) { lock = null; if (!autoTarget || !eng.alive(autoTarget) || !eng.onScreen(autoTarget)) autoTarget = eng.randomTarget(); }
+      if (!validLock()) { lock = null; if (!autoTarget || !eng.alive(autoTarget) || !eng.onScreen(autoTarget)) autoTarget = eng.randomTarget(gun()); }
       const t = lock || autoTarget;
       if (t) tryFire(t.x, t.y, lock);
-    } else if (hold) tryFire(hold.x, hold.y, null);
+    } else if (hold) fireAtHold();
   }
   function updateBots(dt) {
     for (const b of bots) {
@@ -318,7 +340,7 @@ const FishGame = (() => {
       if (b.t > 0) continue;
       b.t = 0.22 + Math.random() * 0.45;
       if (Math.random() < 0.01) b.cost = C.shot.levels[(Math.random() * 4) | 0];
-      if (!b.target || !eng.alive(b.target) || !eng.onScreen(b.target) || Math.random() < 0.08) b.target = eng.randomTarget();
+      if (!b.target || !eng.alive(b.target) || !eng.onScreen(b.target) || Math.random() < 0.08) b.target = eng.randomTarget(b.cost);
       if (b.target) eng.fire(b.seat, b.target.x, b.target.y, b.cost, Math.random() < 0.3 ? b.target : null);
     }
   }
@@ -425,8 +447,9 @@ const FishGame = (() => {
       g.restore();
     }
     // lock marker
-    if (auto && validLock()) {
-      const r = Math.max(lock.t.len, lock.t.h) * 0.55 + 6, a = performance.now() / 300;
+    const aim = auto ? (validLock() ? lock : null) : holdFish(); // ring around the fish being shot at
+    if (aim) {
+      const lock = aim, r = Math.max(lock.t.len, lock.t.h) * 0.55 + 6, a = performance.now() / 300;
       g.strokeStyle = '#ff5c98'; g.lineWidth = 3; g.setLineDash([10, 8]); g.lineDashOffset = -a * 10;
       g.beginPath(); g.arc(lock.x, lock.y, r, 0, Math.PI * 2); g.stroke(); g.setLineDash([]);
     }
@@ -512,7 +535,8 @@ const FishGame = (() => {
   function rulesModal() {
     const pct = Math.round(C.targetRTP * 100);
     modal([{ name: 'Как играть', html: () => `
-      <p>Нажми на рыбу — пушка выстрелит туда. Держи палец, чтобы стрелять очередью. Пули отскакивают от краёв, пока не попадут в рыбу.</p>
+      <p>Нажми на рыбу — пули полетят за <b>этой</b> рыбой и попадут именно в неё. Держи палец, чтобы стрелять очередью. Нажми на воду — выстрел полетит прямо туда и отскочит от краёв.</p>
+      <p><b>Большим рыбам нужна большая пушка:</b> ${[...new Set(T.map(t => t.gun))].map(g => `пушка ${g} — до ×${maxMultFor(g).toLocaleString('ru')}`).join(', ')}. Пули маленькой пушки пролетают сквозь слишком больших рыб.</p>
       <p>Каждый выстрел стоит текущую ставку (кнопки − и + у пушки: ${C.shot.levels.join(' / ')}).</p>
       <p>Попала — рыба может быть поймана. Тогда выигрыш = <b>ставка × цена рыбы</b> (список — кнопка 🐟). Чем больше рыба, тем она дороже, медленнее и реже, и тем труднее её поймать.</p>
       <p>Шанс поймать при попадании = ${pct}% ÷ цена рыбы. Например, Килька ×12 ловится примерно с каждого ${Math.round(12 / C.targetRTP)}-го попадания, Акула ×1000 — с каждого ${Math.round(1000 / C.targetRTP)}-го. В среднем каждое попадание возвращает ${pct}% ставки.</p>

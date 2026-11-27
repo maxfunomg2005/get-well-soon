@@ -26,7 +26,7 @@ const t0 = Date.now();
 const dt = 1 / 60;
 while (st.shots < N) {
   for (let k = 0; k < 6 && st.shots < N; k++) {
-    const seat = (r() * 4) | 0, f = eng.randomTarget(), cost = COST || levels[(r() * levels.length) | 0];
+    const seat = (r() * 4) | 0, cost = COST || levels[(r() * levels.length) | 0], f = eng.randomTarget(cost);
     const lock = r() < 0.25 ? f : null; // some shots use auto-lock (homing)
     const ax = f ? f.x : r() * 540, ay = f ? f.y : r() * 960;
     if (eng.fire(seat, ax, ay, cost, lock) === 'ok') st.shots++;
