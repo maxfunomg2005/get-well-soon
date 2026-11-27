@@ -112,7 +112,8 @@
 
     const onScreen = f => f.x > 0 && f.x < W && f.y > 0 && f.y < H;
     const alive = f => f.active && f.dying === 0 && f.u >= 0;
-    const canHit = (f, cost) => cost >= (f.t.gun || 0); // bigger fish need a bigger gun
+    // each gun catches only fish whose multiplier is inside its range (cfg.guns)
+    const canHit = (f, cost) => { const g = cfg.guns && cfg.guns[cost]; return !g || (f.t.mult >= g.min && f.t.mult <= g.max); };
 
     // ---------- shots ----------
     // aim at a point; optional lockFish makes the bullet home on that fish (hits nothing else).

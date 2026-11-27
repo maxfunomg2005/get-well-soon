@@ -62,8 +62,8 @@ test('kill chance is targetRTP / multiplier (roll just above vs just below)', ()
   }
 });
 
-test('bigger fish need a bigger gun: locked shot refused, stray bullets pass through', () => {
-  const big = { ...cfg.fish[16], gun: 1000 };
+test('a gun only catches fish in its range: locked shot refused, stray bullets pass through', () => {
+  const big = cfg.fish[16]; // Кит x5000: guns 200 / 500 / 1000 only
   const fishOnly = { ...cfg, fish: [big], spawn: { ...cfg.spawn, maxFish: 1, schoolBelow: 0 }, boss: { ...cfg.boss, first: 1e9 } };
   const { eng, w, ev } = setup(10000, () => 0, {});
   // replace the engine with one whose only fish type needs gun 1000
@@ -79,15 +79,26 @@ test('bigger fish need a bigger gun: locked shot refused, stray bullets pass thr
   for (let i = 0; i < 600 && !s2.e.fish.some(f => f.active && s2.e.onScreen(f)); i++) s2.e.step(1 / 30);
   const f = s2.e.fish.find(x => x.active && s2.e.onScreen(x));
   assert.ok(f, 'big fish on screen');
-  assert.equal(s2.e.fire(0, f.x, f.y, 100, f), 'gun');
+  assert.equal(s2.e.fire(0, f.x, f.y, 10, f), 'gun');
   assert.equal(s2.wl.coins, 10000, 'refused shot costs nothing');
   assert.equal(s2.e.canHit(f, 1000), true);
-  assert.equal(s2.e.randomTarget(500), null);
-  assert.equal(s2.e.fishAt(f.x, f.y, 18, 100), f, 'touch still finds it so the UI can explain');
-  // a straight 100-shot aimed through it never hits; it is refunded after its lifetime
-  assert.equal(s2.e.fire(0, f.x, f.y, 100, null), 'ok');
+  assert.equal(s2.e.randomTarget(50), null);
+  assert.equal(s2.e.canHit(f, 200), true);
+  assert.equal(s2.e.fishAt(f.x, f.y, 18, 10), f, 'touch still finds it so the UI can explain');
+  // a straight 10-shot aimed through it never hits; it is refunded after its lifetime
+  assert.equal(s2.e.fire(0, f.x, f.y, 10, null), 'ok');
   for (let i = 0; i < 30 * (cfg.shot.life + 1); i++) s2.e.step(1 / 30);
   assert.equal(s2.evs.kills, 0);
   assert.equal(s2.evs.refunds, 1);
   assert.equal(s2.wl.coins, 10000);
+});
+
+test('gun ranges match the table', () => {
+  const { eng } = setup(0);
+  const can = (mult, gun) => eng.canHit({ t: { mult } }, gun);
+  const table = [[10, 12, 500], [30, 12, 2000], [50, 12, 3000], [200, 200, 10000], [500, 300, 200000], [1000, 800, 200000]];
+  for (const [gun, lo, hi] of table) {
+    for (const f of cfg.fish) assert.equal(can(f.mult, gun), f.mult >= lo && f.mult <= hi, `gun ${gun} vs x${f.mult}`);
+  }
+  assert.equal(can(150, 200), false, '200 gun ignores fish up to x150');
 });
